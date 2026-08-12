@@ -5,13 +5,14 @@ import StatusBadge from "@/components/StatusBadge";
 import PollingRefresher from "@/components/PollingRefresher";
 
 type TicketPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 const TERMINAL_STATUSES = ["triaged", "resolved", "failed"];
 
 export default async function TicketDetailPage({ params }: TicketPageProps) {
-  const ticket = await getTicket(params.id);
+  const { id } = await params;
+  const ticket = await getTicket(id);
 
   if (!ticket) {
     notFound();
