@@ -34,3 +34,4 @@ htmlcov/
 Thumbs.db
 
 postgres_data/
+backend/.env
