@@ -52,5 +52,16 @@ services:
       - "host.docker.internal:host-gateway"
     command: python tickets/worker.py
 
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      DJANGO_API_URL: http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:

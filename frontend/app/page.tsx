@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { getTickets } from "@/lib/api";
 import { createTicketAction } from "@/app/actions";
-import StatusBadge from "@/components/StatusBadge";
+import TicketListClient from "@/components/TicketListClient";
 
-export default async function Home() {
-  const tickets = await getTickets();
-
+export default function Home() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
       <h1 className="text-2xl font-semibold mb-6">Tickets</h1>
@@ -62,19 +59,7 @@ export default async function Home() {
       </form>
 
       <h2 className="text-lg font-medium mb-3">All Tickets</h2>
-      <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
-        {tickets.map((ticket: typeof tickets[number]) => (
-          <li key={ticket.id}>
-            <Link
-              href={`/tickets/${ticket.id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-gray-50"
-            >
-              <span className="text-sm">{ticket.subject}</span>
-              <StatusBadge status={ticket.status} />
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <TicketListClient />
     </main>
   );
 }

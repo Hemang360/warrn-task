@@ -35,7 +35,26 @@ if not SECRET_KEY:
         import secrets
         SECRET_KEY = secrets.token_urlsafe(50)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get(
+    "DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,backend"
+).split(",")
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
+
+# For local development, allow all hosts when DEBUG is enabled to avoid
+# DisallowedHost errors from service hostnames like 'backend:8000'. In
+# production you should set `DJANGO_DEBUG=False` and specify explicit
+# `DJANGO_ALLOWED_HOSTS` values in the environment.
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "DJANGO_CSRF_TRUSTED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://backend:8000,http://localhost:8000",
+    ).split(",")
+    if origin.strip()
+]
 
 
 # Application definition

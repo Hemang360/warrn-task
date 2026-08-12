@@ -17,7 +17,7 @@ export type Ticket = {
 const API_URL = process.env.DJANGO_API_URL ?? "http://localhost:8000";
 
 export async function getTickets(): Promise<Ticket[]> {
-  const response = await fetch(`${API_URL}/api/tickets/`, {
+  const response = await fetch(`${API_URL}/api/tickets`, {
     cache: "no-store",
   });
 
@@ -29,7 +29,7 @@ export async function getTickets(): Promise<Ticket[]> {
 }
 
 export async function getTicket(id: string): Promise<Ticket | null> {
-  const response = await fetch(`${API_URL}/api/tickets/${id}/`, {
+  const response = await fetch(`${API_URL}/api/tickets/${id}`, {
     cache: "no-store",
   });
 
@@ -45,7 +45,7 @@ export async function createTicket(data: {
   body: string;
   customer_email: string;
 }): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/api/tickets/`, {
+  const response = await fetch(`${API_URL}/api/tickets`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +64,7 @@ export async function resolveTicket(
   ticketId: string,
   data: { category: string; priority: string }
 ): Promise<Ticket> {
-  const response = await fetch(`${API_URL}/api/tickets/${ticketId}/resolve/`, {
+  const response = await fetch(`${API_URL}/api/tickets/${ticketId}/resolve`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
