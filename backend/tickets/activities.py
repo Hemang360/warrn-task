@@ -1,18 +1,13 @@
 from temporalio import activity
-
+from tickets.ai import triage_agent
 from tickets.models import Ticket, TriageResult
 
 
 @activity.defn
 async def classify_ticket(input: dict) -> dict:
-    # TODO: replace this stub with a real Pydantic AI call that classifies
-    # input["subject"] / input["body"] into category/priority/confidence.
-    return {
-        "category": "bug",
-        "priority": "medium",
-        "confidence": 0.9,
-        "reasoning": "stub",
-    }
+    prompt = f"Subject: {input['subject']}\n\nBody: {input['body']}"
+    result = await triage_agent.run(prompt)
+    return result.output.model_dump()
 
 
 @activity.defn
