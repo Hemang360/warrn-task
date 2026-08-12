@@ -6,20 +6,35 @@ from ninja import NinjaAPI, Query
 from ninja.errors import HttpError
 from .models import Ticket, TriageResult
 from .schemas import ResolveIn, TicketIn, TicketOut
+from .temporal_client import get_temporal_client
+from .workflows import TriageWorkflow
 
 api = NinjaAPI()
 
 @api.post("/tickets", response={201: TicketOut})
-def create_ticket(request, payload: TicketIn):
-    ticket = Ticket.objects.create(
+async def create_ticket(request, payload: TicketIn):
+    ticket = await Ticket.objects.acreate(
         subject=payload.subject,
         body=payload.body,
         customer_email=payload.customer_email,
         status=Ticket.Status.PENDING,
     )
-    # TODO: once Temporal is wired up, start the triage workflow here and
-    # persist ticket.workflow_id. This endpoint becomes `async def` at that
-    # point so it can await the Temporal client — leave it sync until then.
+
+    client = await get_temporal_client()
+    handle = await client.start_workflow(
+        TriageWorkflow.run,
+        {
+            "ticket_id": str(ticket.id),
+            "subject": ticket.subject,
+            "body": ticket.body,
+        },
+        id=f"triage-{ticket.id}",
+        task_queue="triage-queue",
+    )
+    ticket.workflow_id = handle.id
+    await ticket.asave()
+
+    ticket._prefetched_triage_result = None
     return 201, ticket
 
 
@@ -43,8 +58,11 @@ def list_tickets(
 
 
 @api.post("/tickets/{ticket_id}/resolve", response=TicketOut)
-def resolve_ticket(request, ticket_id: UUID, payload: ResolveIn):
-    ticket = get_object_or_404(Ticket, id=ticket_id)
+async def resolve_ticket(request, ticket_id: UUID, payload: ResolveIn):
+    try:
+        ticket = await Ticket.objects.aget(id=ticket_id)
+    except Ticket.DoesNotExist:
+        raise HttpError(404, "Ticket not found.")
 
     if ticket.status != Ticket.Status.NEEDS_REVIEW:
         raise HttpError(
@@ -53,18 +71,9 @@ def resolve_ticket(request, ticket_id: UUID, payload: ResolveIn):
             f"(current status: '{ticket.status}').",
         )
 
-    # TODO: once Temporal is wired up, this direct write is replaced by
-    # signaling the running workflow instead of mutating the DB here.
-    TriageResult.objects.update_or_create(
-        ticket=ticket,
-        defaults={
-            "category": payload.category,
-            "priority": payload.priority,
-            "confidence": 1.0,
-            "reasoning": "Manually resolved by a human reviewer.",
-            "reviewed_by_human": True,
-        },
-    )
-    ticket.status = Ticket.Status.RESOLVED
-    ticket.save(update_fields=["status", "updated_at"])
+    client = await get_temporal_client()
+    handle = client.get_workflow_handle(ticket.workflow_id)
+    await handle.signal(TriageWorkflow.submit_human_review, payload.dict())
+
+    ticket._prefetched_triage_result = None
     return ticket

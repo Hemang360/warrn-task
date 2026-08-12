@@ -31,6 +31,8 @@ class TicketOut(Schema):
 
     @staticmethod
     def resolve_triage_result(obj):
+        if hasattr(obj, "_prefetched_triage_result"):
+            return obj._prefetched_triage_result
         try:
             return obj.triage_result
         except TriageResult.DoesNotExist:
