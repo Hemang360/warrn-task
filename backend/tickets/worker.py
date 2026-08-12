@@ -27,7 +27,7 @@ RESTRICTIONS = SandboxRestrictions.default.with_passthrough_modules(
 )
 
 async def main() -> None:
-    client = await Client.connect("localhost:7233")
+    client = await Client.connect(os.environ.get("TEMPORAL_ADDRESS", "localhost:7233"))
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
