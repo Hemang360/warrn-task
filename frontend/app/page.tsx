@@ -63,7 +63,7 @@ export default async function Home() {
 
       <h2 className="text-lg font-medium mb-3">All Tickets</h2>
       <ul className="divide-y divide-gray-200 rounded-md border border-gray-200">
-        {tickets.map((ticket) => (
+        {tickets.map((ticket: typeof tickets[number]) => (
           <li key={ticket.id}>
             <Link
               href={`/tickets/${ticket.id}`}

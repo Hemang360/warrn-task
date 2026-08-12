@@ -2,10 +2,13 @@ import { notFound } from "next/navigation";
 import { getTicket } from "@/lib/api";
 import { resolveTicketAction } from "@/app/actions";
 import StatusBadge from "@/components/StatusBadge";
+import PollingRefresher from "@/components/PollingRefresher";
 
 type TicketPageProps = {
   params: { id: string };
 };
+
+const TERMINAL_STATUSES = ["triaged", "resolved", "failed"];
 
 export default async function TicketDetailPage({ params }: TicketPageProps) {
   const ticket = await getTicket(params.id);
@@ -16,6 +19,10 @@ export default async function TicketDetailPage({ params }: TicketPageProps) {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
+      {!TERMINAL_STATUSES.includes(ticket.status) && (
+        <PollingRefresher intervalMs={3000} />
+      )}
+
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{ticket.subject}</h1>
         <StatusBadge status={ticket.status} />

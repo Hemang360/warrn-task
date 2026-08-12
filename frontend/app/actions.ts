@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createTicket } from "@/lib/api";
+import { createTicket, resolveTicket } from "@/lib/api";
 
 export async function createTicketAction(formData: FormData) {
   const subject = formData.get("subject") as string;
