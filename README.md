@@ -8,7 +8,7 @@ A customer-facing ticket comes in via `POST /tickets`. A Temporal workflow class
 workflow waits — indefinitely, via a signal — for a human to resolve it through `POST /tickets/{id}/resolve`.
 
 The system is deliberately split into three processes that don't share memory: the API (handles HTTP, starts/signals workflows, never blocks on LLM calls), the Temporal server (durable orchestration state), and a worker
-(runs activities — the actual DB writes and the LLM call). 
+(runs activities — the actual DB writes and the LLM call).
 
 ## Architecture
 
@@ -24,6 +24,7 @@ The system is deliberately split into three processes that don't share memory: t
 |---|---|---|
 | Postgres | Docker Compose | Infra this repo owns — trivial to containerize, no reason not to. |
 | Django API + Temporal worker | Docker Compose (`backend` / `worker` services, same image) | Containerized so the whole app stack starts with one command. |
+| Next.js frontend | Docker Compose (`frontend` service) | Containerized alongside the API for a single-command startup. |
 | Temporal server | Native, via `temporal server start-dev` | Not infra this repo owns |
 
 ## How to Run
@@ -34,29 +35,37 @@ You need **two terminals**.
 
 ```bash
 brew install temporal   # macOS; see https://docs.temporal.io/cli for other platforms
-temporal server start-dev
+temporal server start-dev --ip 0.0.0.0
 ```
 
-This exposes the gRPC endpoint on `localhost:7233` and a Web UI at `http://localhost:8233` — useful for watching workflow executions live while you test. This process has to be running *before* you start the containers below, since both the API and the worker connect to it on startup.
+> **Important:** Pass `--ip 0.0.0.0` so that the Docker containers can reach the Temporal server via the host's Docker bridge IP. Without this flag, Temporal only binds to `127.0.0.1` and the `worker` container cannot connect.
+
+This exposes the gRPC endpoint on `:7233` and a Web UI at `http://localhost:8233` — useful for watching workflow executions live while you test. This process has to be running *before* you start the containers below, since both the API and the worker connect to it on startup.
 
 ### 2. Everything else (Terminal 2)
 
 ```bash
 cp backend/.env.example backend/.env   # fill in a real OPENROUTER_API_KEY
 docker compose up --build
-``` 
+```
 
-This single command starts Postgres, runs Django migrations, and starts both the API and the Temporal worker. Containers reach the Temporal server on your host via `host.docker.internal` — configured in `docker-compose.yml`,
-nothing to set up manually.
+This single command starts Postgres, runs Django migrations, and starts the API, the Temporal worker, and the Next.js frontend.
 
-Watch the combined logs — you should see the worker print `Worker started, polling task queue 'triage-queue'...` alongside Django's `Starting development server at http://0.0.0.0:8000/`. API is now live at `http://localhost:8000`; interactive docs at `http://localhost:8000/api/docs`.
+| Service | URL | Description |
+|---|---|---|
+| **Frontend UI** | http://localhost:3000 | Submit tickets and review triage results |
+| **Django API** | http://localhost:8000 | REST API |
+| **API docs** | http://localhost:8000/api/docs | Interactive Swagger UI |
+| **Temporal UI** | http://localhost:8233 | Workflow execution monitor |
+
+Watch the combined logs — you should see the worker print `Worker started, polling task queue 'triage-queue'...` alongside Django's `Starting development server at http://0.0.0.0:8000/`.
 
 <details>
 <summary>Running natively instead of via Docker (optional)</summary>
 
 ```bash
 # Terminal 1
-temporal server start-dev
+temporal server start-dev --ip 0.0.0.0
 
 # Terminal 2
 docker compose up -d postgres   # just the DB
@@ -68,12 +77,19 @@ python manage.py runserver
 # Terminal 3
 source venv/bin/activate
 python tickets/worker.py
+
+# Terminal 4 (frontend)
+cd frontend
+npm install
+npm run dev   # http://localhost:3000
 ```
 
-`TEMPORAL_ADDRESS` defaults to `localhost:7233`, so no env changes are needed for this path — it's only overridden to `host.docker.internal:7233` inside `docker-compose.yml` for the containerized `backend`/`worker` services.
+`TEMPORAL_ADDRESS` defaults to `localhost:7233`, so no env changes are needed for this path — it's only overridden to the Docker bridge IP inside `docker-compose.yml` for the containerized `backend`/`worker` services.
 </details>
 
 ### End-to-end smoke test
+
+You can use the **frontend UI at http://localhost:3000** to submit tickets and watch them progress through triage. Or use `curl` directly against the API:
 
 **Auto-triage (clearly billing-related, high confidence expected):**
 
@@ -99,7 +115,7 @@ curl -X POST http://localhost:8000/api/tickets \
   -d '{"subject":"question","body":"idk something is weird with my account maybe? not sure what to do","customer_email":"a@b.com"}'
 ```
 
-Poll it — status should settle at `needs_review`. Then resolve it as a human reviewer:
+Poll it — status should settle at `needs_review`. Then resolve it as a human reviewer (via the UI form on the ticket detail page, or via curl):
 
 ```bash
 curl -X POST http://localhost:8000/api/tickets/<id>/resolve \
@@ -127,7 +143,7 @@ source venv/bin/activate
 pytest
 ```
 
-No live Temporal server and no `OPENROUTER_API_KEY` are required to run thesuite:
+No live Temporal server and no `OPENROUTER_API_KEY` are required to run the suite:
 
 - `tests/test_api.py` mocks the Temporal client for ticket creation, so no workflow is actually started.
 - `tests/test_activities.py` overrides the Pydantic AI agent with `TestModel` / `FunctionModel`, so no real OpenRouter call is made.
