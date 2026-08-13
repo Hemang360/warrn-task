@@ -205,9 +205,9 @@ export default async function TicketDetailPage({ params }: TicketPageProps) {
               >
                 <option value="billing">💳 Billing</option>
                 <option value="account">👤 Account</option>
-                <option value="bug">🐛 Technical / Bug</option>
-                <option value="feature">✨ Feature Request</option>
-                <option value="other">💬 General / Other</option>
+                <option value="technical">🐛 Technical / Bug</option>
+                <option value="feature_request">✨ Feature Request</option>
+                <option value="general">💬 General / Other</option>
               </select>
             </div>
 
