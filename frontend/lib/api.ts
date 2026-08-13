@@ -9,6 +9,8 @@ export type TriageResult = {
 export type Ticket = {
   id: string;
   subject: string;
+  body?: string;
+  customer_email?: string;
   status: "pending" | "triaged" | "needs_review" | "resolved" | "failed";
   created_at: string;
   triage_result: TriageResult | null;

@@ -25,6 +25,8 @@ class TriageResultOut(Schema):
 class TicketOut(Schema):
     id: UUID
     subject: str
+    body: Optional[str] = None
+    customer_email: Optional[str] = None
     status: str
     created_at: datetime
     triage_result: Optional[TriageResultOut] = None

@@ -34,3 +34,10 @@ async def save_triage_result(data: dict) -> None:
         Ticket.Status.RESOLVED if data["reviewed_by_human"] else Ticket.Status.TRIAGED
     )
     await ticket.asave()
+
+
+@activity.defn
+async def mark_failed(ticket_id: str) -> None:
+    ticket = await Ticket.objects.aget(id=ticket_id)
+    ticket.status = Ticket.Status.FAILED
+    await ticket.asave()

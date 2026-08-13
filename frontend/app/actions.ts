@@ -23,4 +23,5 @@ export async function resolveTicketAction(
   await resolveTicket(ticketId, { category, priority });
 
   revalidatePath(`/tickets/${ticketId}`);
+  redirect(`/tickets/${ticketId}`);
 }
